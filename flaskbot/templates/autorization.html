@@ -1,0 +1,21 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Авторизация</title>
+</head>
+<body>
+  <form action="" method="post" style="margin-left: 30%;">
+      <p><label>Имя: </label> <input type="text" style=position:absolute;left:12%;margin-left:25%; name="name" value="" requied />
+      <p><label>Пароль: </label> <input type="password" style=position:absolute;left:12%;margin-left:25%; name="psw" value="" requied /><br><br>
+      <button type="submit" style=position:absolute;left:12%;margin-left:30%;>Вход</button><br><br>
+      {% for i, msg in get_flashed_messages(True) %}
+        <p>{{msg}}
+      {% endfor %}
+  </form>
+</body>
+
+</html>

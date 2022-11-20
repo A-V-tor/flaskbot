@@ -7,13 +7,15 @@ from wtforms import TextAreaField
 
 from flaskbot import app, db
 
-from .other import Image, Product
+from .bot import current_user
+from .other import AdminProfile, Image, Product
 
 
 class MyAdminIndexView(AdminIndexView):
     def is_accessible(self):
         try:
-            return True
+            if current_user.admin:
+                return True
         except:
             pass
 
@@ -23,9 +25,48 @@ admin = Admin(
     name="",
     template_mode="bootstrap3",
     index_view=MyAdminIndexView(
-        name="Админка", menu_icon_type="glyph", menu_icon_value="glyphicon-home"
+        name="Админка", menu_icon_type="glyph", menu_icon_value="glyphicon-send"
     ),
 )
+
+
+class AnalyticsView(BaseView):
+    @expose("/")
+    def index(self):
+        return self.render(
+            "admin/analytics_index.html",
+        )
+
+    def is_accessible(self):
+        try:
+            if current_user.admin:
+                return True
+        except:
+            pass
+
+
+class AdminProfileView(ModelView):
+    can_view_details = True
+    column_editable_list = ["admin"]
+    column_default_sort = "name"
+    column_descriptions = dict(
+        owner="могут создавать новых пользоавтелей и раздавать права"
+    )
+    create_modal = True
+    edit_modal = True
+    column_labels = dict(
+        name="Логин",
+        psw="Пароль",
+        admin="Права админа",
+        owner="Права владельца",
+    )
+
+    def is_accessible(self):
+        try:
+            if current_user.owner:
+                return True
+        except:
+            pass
 
 
 class ImageView(ModelView):
@@ -41,6 +82,13 @@ class ImageView(ModelView):
     edit_modal = True
     path = os.path.join(os.path.dirname(__file__), "static/image-product")
     form_extra_fields = {"image": form.ImageUploadField("изображение", base_path=path)}
+
+    def is_accessible(self):
+        try:
+            if current_user.admin:
+                return True
+        except:
+            pass
 
 
 class ProductView(ModelView):
@@ -93,6 +141,23 @@ class ProductView(ModelView):
     create_modal = True
     edit_modal = True
 
+    def is_accessible(self):
+        try:
+            if current_user.admin:
+                return True
+        except:
+            pass
+
+
+admin.add_view(
+    AnalyticsView(
+        name="Аналитика",
+        endpoint="analytics",
+        menu_icon_type="glyph",
+        menu_icon_value="glyphicon-stats",
+    )
+)
+
 
 path = os.path.join(os.path.dirname(__file__), "static")
 admin.add_view(
@@ -105,5 +170,30 @@ admin.add_view(
     )
 )
 
-admin.add_view(ProductView(Product, db.session, name="Товары"))
-admin.add_view(ImageView(Image, db.session, name="Фото"))
+admin.add_view(
+    ProductView(
+        Product,
+        db.session,
+        name="Товары",
+        menu_icon_type="glyph",
+        menu_icon_value="glyphicon-shopping-cart",
+    )
+)
+admin.add_view(
+    ImageView(
+        Image,
+        db.session,
+        name="Фото",
+        menu_icon_type="glyph",
+        menu_icon_value="glyphicon-picture",
+    )
+)
+admin.add_view(
+    AdminProfileView(
+        AdminProfile,
+        db.session,
+        name="Администраторы",
+        menu_icon_type="glyph",
+        menu_icon_value="glyphicon-user",
+    )
+)

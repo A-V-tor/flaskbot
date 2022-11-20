@@ -1,5 +1,6 @@
 import datetime
 
+from flask_login import UserMixin
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship
 
@@ -24,6 +25,18 @@ class Image(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     product_id = db.Column(db.Integer, ForeignKey("product.id"))
     image = db.Column(db.String(100))  # переименовать на name_image
+
+
+class AdminProfile(db.Model, UserMixin):
+    __tablename__ = "adminprofile"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100))
+    psw = db.Column(db.String(300))
+    admin = db.Column(db.Boolean, nullable=False, default=True)
+    owner = db.Column(db.Boolean, nullable=False, default=False)
+
+    def __str__(self):
+        return self.name
 
 
 db.create_all()

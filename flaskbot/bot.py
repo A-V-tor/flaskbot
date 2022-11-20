@@ -3,16 +3,34 @@ from collections import deque
 
 import telebot
 from dotenv import find_dotenv, load_dotenv
-from flask import abort, request
+from flask import abort, flash, redirect, render_template, request, session, url_for
+from flask_login import (
+    LoginManager,
+    current_user,
+    login_required,
+    login_user,
+    logout_user,
+)
 from telebot import types
 
-from flaskbot import app, db
+from flaskbot import app, babel, db
 
-from .other import Product
+from .other import AdminProfile, Product
 
 load_dotenv(find_dotenv())
+login_manager = LoginManager(app)
 bot = telebot.TeleBot(os.getenv("token"))
+
+###########################################################################
+
 STATE_DICT = {}
+DEL_MESSEGE_ID = []
+
+# STATE_DICT сохраняет состояние между обработчиками о текущем товаре
+
+# DEL_MESSEGE_ID хранит идентификаторы предыдущих сообщений для удаления
+
+###########################################################################
 
 
 @bot.message_handler(commands=["start"])
@@ -22,11 +40,9 @@ def start(message):
 
 @bot.message_handler(commands=["product"])
 def get_product(message):
-    '''
-    Запуск прохода по списку товаров,
-
-    STATE_DICT хранит список между обработчиками.
-    '''
+    """
+    Запуск прохода по списку товаров.
+    """
     list_products = deque(Product.query.filter_by(is_published=True).all())
     STATE_DICT["list_products"] = list_products
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -42,7 +58,7 @@ def get_product(message):
             for i in images
         ]
     ]
-    # bot.delete_message(message.chat.id, message.message_id - 1)
+    bot.delete_message(message.chat.id, message.message_id)
     bot.send_media_group(message.chat.id, media)
     bot.send_message(
         message.chat.id,
@@ -50,13 +66,23 @@ def get_product(message):
         parse_mode="HTML",
         reply_markup=markup,
     )
+    DEL_MESSEGE_ID.append(message.message_id + 1), DEL_MESSEGE_ID.append(
+        message.message_id + 2
+    )
 
 
 @bot.message_handler(commands=["next"])
 def get_next_product(message):
-    '''
+    """
     Прокрутка списка вперед и отправка текущей еденицы товара.
-    '''
+
+    Удаляются сообщения о предыдущем товаре.
+    """
+    [bot.delete_message(message.chat.id, id) for id in DEL_MESSEGE_ID]
+    DEL_MESSEGE_ID.clear()
+    DEL_MESSEGE_ID.append(message.message_id + 1), DEL_MESSEGE_ID.append(
+        message.message_id + 2
+    )
     list_products = STATE_DICT["list_products"]
     list_products.rotate(1)
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -73,6 +99,7 @@ def get_next_product(message):
             for i in images
         ]
     ]
+    bot.delete_message(message.chat.id, message.message_id)
     bot.send_media_group(message.chat.id, media)
     bot.send_message(
         message.chat.id,
@@ -84,9 +111,16 @@ def get_next_product(message):
 
 @bot.message_handler(commands=["back"])
 def get_next_product(message):
-    '''
+    """
     Прокрутка списка назад и отправка текущей еденицы товара.
-    '''
+
+    Удаляются сообщения о предыдущем товаре.
+    """
+    [bot.delete_message(message.chat.id, id) for id in DEL_MESSEGE_ID]
+    DEL_MESSEGE_ID.clear()
+    DEL_MESSEGE_ID.append(message.message_id + 1), DEL_MESSEGE_ID.append(
+        message.message_id + 2
+    )
     list_products = STATE_DICT["list_products"]
     list_products.rotate(-1)
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -103,6 +137,7 @@ def get_next_product(message):
             for i in images
         ]
     ]
+    bot.delete_message(message.chat.id, message.message_id)
     bot.send_media_group(message.chat.id, media)
     bot.send_message(
         message.chat.id,
@@ -114,8 +149,21 @@ def get_next_product(message):
 
 @bot.message_handler(commands=["pay"])
 def make_pay_product(message):
-    list_products = STATE_DICT["list_products"][0]
-    bot.send_message(message.from_user.id, f" Книга '{list_products.name}' куплена!")
+    pay_product = STATE_DICT["list_products"][0]
+    bot.delete_message(message.chat.id, message.message_id)
+    bot.send_message(message.from_user.id, f" Книга '{pay_product.name}' куплена!")
+
+
+@login_manager.user_loader
+def load_user(user):
+    return AdminProfile.query.get(user)
+
+
+@babel.localeselector
+def get_locale():
+    if request.args.get("lang"):
+        session["lang"] = request.args.get("lang")
+    return session.get("lang", "ru")
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -127,3 +175,28 @@ def receive_update():
         return ""
     else:
         abort(403)
+
+
+@app.route("/login", methods=["POST", "GET"])
+def index_autorization():
+    """Авторизация администратора"""
+
+    if request.method == "POST":
+        datauser = AdminProfile.query.filter_by(
+            name=request.form["name"], psw=request.form["psw"]
+        ).first()
+        if datauser:
+            login_user(datauser, remember=True)
+            return redirect(url_for("admin.index"))
+        else:
+            print("что то не так")
+            flash("Неверный логин или пароль!")
+
+    return render_template("autorization.html", title="Авторизация")
+
+
+@app.route("/exit", methods=["POST", "GET"])
+@login_required
+def user_exit():
+    logout_user()
+    return redirect(url_for("index_autorization"))
