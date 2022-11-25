@@ -8,7 +8,7 @@ from wtforms import TextAreaField
 from flaskbot import app, db
 
 from .bot import current_user
-from .other import AdminProfile, Image, Product
+from .other import AdminProfile, Image, Product, FavoritesProducts
 
 
 class MyAdminIndexView(AdminIndexView):
@@ -197,3 +197,4 @@ admin.add_view(
         menu_icon_value="glyphicon-user",
     )
 )
+admin.add_view(ModelView(FavoritesProducts, db.session, name='Избранное'))
