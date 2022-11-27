@@ -3,6 +3,7 @@ import os.path
 from flask_admin import Admin, AdminIndexView, BaseView, expose, form
 from flask_admin.contrib.fileadmin import FileAdmin
 from flask_admin.contrib.sqla import ModelView
+# from wtforms.fields import SelectField, BooleanField
 from wtforms import TextAreaField
 
 from flaskbot import app, db
@@ -74,7 +75,7 @@ class ImageView(ModelView):
     can_view_details = True
     column_hide_backrefs = False
     column_editable_list = ["image"]
-    column_list = ["id", "image", "product_id"]
+    column_list = ["id", "image", "product_id", "product.name"]
     column_default_sort = "image"
     column_descriptions = dict(image="хранятся в /image-product/")
     column_labels = dict(image="изображение", product_id="идентификатор товара")
@@ -126,7 +127,6 @@ class ProductView(ModelView):
         is_published="опубликован ?",
         image="изображение",
     )
-
     form_choices = {
         "genre": [
             ("Приключения", "Приключения"),

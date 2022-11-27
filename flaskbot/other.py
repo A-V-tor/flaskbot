@@ -27,6 +27,9 @@ class Image(db.Model):
     product_id = db.Column(db.Integer, ForeignKey("product.id"))
     image = db.Column(db.String(100))  # переименовать на name_image
 
+    def __str__(self):
+        return self.image
+
 
 class AdminProfile(db.Model, UserMixin):
     __tablename__ = "adminprofile"
