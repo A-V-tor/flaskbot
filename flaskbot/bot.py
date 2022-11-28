@@ -81,7 +81,7 @@ welcome_keyboard.add(product_button, categories_button).add(close_button)
 
 @bot.message_handler(commands=["start"])
 def start_chat(message):
-    DEL_MESSEGE_ID.append(message.message_id), DEL_MESSEGE_ID.append(message.message_id + 1)
+    DEL_MESSEGE_ID.append(message.message_id)
     print(1,DEL_MESSEGE_ID)
     bot.send_message(message.from_user.id, ' Меню', reply_markup=welcome_keyboard)
     # bot.send_message(message.from_user.id, message, reply_markup=welcome_keyboard)
@@ -106,7 +106,10 @@ def get_product_categories(callback):
     categories_fantasy = Product.query.filter_by(genre="Фэнтези", is_published=True).all()
     categories_thriller = Product.query.filter_by(genre="Триллер", is_published=True).all()
     categories_detective = Product.query.filter_by(genre="Детектив", is_published=True).all()
-    DEL_MESSEGE_ID.append(callback.message.message_id + 1), DEL_MESSEGE_ID.append(callback.message.message_id)
+    [bot.delete_message(callback.message.chat.id, id) for id in DEL_MESSEGE_ID]
+    DEL_MESSEGE_ID.clear()
+    DEL_MESSEGE_ID.append(callback.message.message_id)#, DEL_MESSEGE_ID.append(callback.message.message_id + 1)
+    print(2,DEL_MESSEGE_ID)
     bot.send_message(
         callback.message.chat.id,
         f"<b>Категория</b>\n Роман {len(categories_novel)} шт \n Приключения {len(categories_adventures)} шт \n Фэнтези {len(categories_fantasy)} шт \n Триллер {len(categories_thriller)} шт \n Детектив {len(categories_detective)} шт \n",
@@ -311,9 +314,8 @@ def get_product(callback):
         markup_product = markup_product_1
     elif len(check) == 0:
         markup_product = markup_product_2
-    print(2,DEL_MESSEGE_ID)
-    # [bot.delete_message(callback.message.chat.id, id) for id in DEL_MESSEGE_ID]
-    # DEL_MESSEGE_ID.clear()
+    [bot.delete_message(callback.message.chat.id, id) for id in DEL_MESSEGE_ID]
+    DEL_MESSEGE_ID.clear()
     images = [i.image for i in current_product.image]
     media = [
         types.InputMediaPhoto(i)
