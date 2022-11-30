@@ -1,4 +1,5 @@
 import os
+import time
 from collections import deque
 import telebot
 from dotenv import find_dotenv, load_dotenv
@@ -14,7 +15,10 @@ from telebot import types
 
 from flaskbot import app, babel, db
 
-from .other import AdminProfile, Product, FavoritesProducts
+from .other import AdminProfile, Product, FavoritesProducts, markup_product_1, markup_product_2, cat_keyboard, piligrim_keyboard_1, piligrim_keyboard_2, welcome_keyboard, favorites_keyboard
+
+
+
 load_dotenv(find_dotenv())
 login_manager = LoginManager(app)
 bot = telebot.TeleBot(os.getenv("token"))
@@ -33,278 +37,41 @@ DEL_MESSEGE_ID = []
 CATEGORIES_DICT = {}
 # хранение товаров по жанру
 
+NAME_IMAGE = {}
+# хранение имен изображений
+
 # ###########################################################################
-
-close_button = types.InlineKeyboardButton(text="закрыть", callback_data="close")
-# клавиатура для прохода по списку товаров
-inline_back = types.InlineKeyboardButton(text="назад", callback_data="back")
-inline_next = types.InlineKeyboardButton(text="вперед", callback_data="next")
-inline_favorite = types.InlineKeyboardButton(text="\u2605", callback_data="favorite")
-inline_del_favorite = types.InlineKeyboardButton(text="\u2605 \u2326", callback_data="delfavorite")
-inline_pay = types.InlineKeyboardButton(text="Купить", callback_data="pay")
-
-# клавиатура товара с "добавить в избраное"
-markup_product_1 = types.InlineKeyboardMarkup()
-markup_product_1.add(inline_back, inline_next).add(inline_del_favorite, inline_pay).add(close_button)
-# клавиатура товара с "убрать из избраное"
-markup_product_2 = types.InlineKeyboardMarkup()
-markup_product_2.add(inline_back, inline_next).add(inline_favorite, inline_pay).add(close_button)
-
-
-# клавиатура показа категорий товара
-
-category_adventures = types.InlineKeyboardButton(text="приключения", callback_data="adventures")
-category_fantasy = types.InlineKeyboardButton(text="фентези", callback_data="fantasy")
-category_novel = types.InlineKeyboardButton(text="роман", callback_data="novel")
-category_thriller = types.InlineKeyboardButton(text="триллер", callback_data="thriller")
-category_detective = types.InlineKeyboardButton(text="детектив", callback_data="detective")
-cat_keyboard = types.InlineKeyboardMarkup()
-cat_keyboard.add(category_adventures, category_detective, category_fantasy, category_novel, category_thriller).add(close_button)
-
-# клавиатура для прохода по категории товара
-categories_back = types.InlineKeyboardButton(text="назад", callback_data="cat-back")
-categories_next = types.InlineKeyboardButton(text="вперед", callback_data="cat-next")
-categories_favorite = types.InlineKeyboardButton(text='\u2605', callback_data='cat-favorite')
-categories_del_favorite = types.InlineKeyboardButton(text='\u2605 \u2326', callback_data='cat-del-favorite')
-piligrim_keyboard_1 = types.InlineKeyboardMarkup()
-piligrim_keyboard_2 = types.InlineKeyboardMarkup()
-piligrim_keyboard_1.add(categories_back, categories_next).add(categories_favorite).add(close_button)
-piligrim_keyboard_2.add(categories_back, categories_next).add(categories_del_favorite).add(close_button)
-
-
-welcome_keyboard = types.InlineKeyboardMarkup()
-product_button = types.InlineKeyboardButton(text="товар", callback_data="product")
-categories_button = types.InlineKeyboardButton(text="категория", callback_data="categories")
-welcome_keyboard.add(product_button, categories_button).add(close_button)
-# ___________________________________________________________________________
 
 
 @bot.message_handler(commands=["start"])
 def start_chat(message):
-    DEL_MESSEGE_ID.append(message.message_id)
-    print(1,DEL_MESSEGE_ID)
+    bot.delete_message(message.chat.id, message.message_id)
     bot.send_message(message.from_user.id, ' Меню', reply_markup=welcome_keyboard)
-    # bot.send_message(message.from_user.id, message, reply_markup=welcome_keyboard)
 
 
-#@bot.message_handler(commands=["delete"])
+
 @bot.callback_query_handler(func=lambda callback: callback.data == 'close')
-def start_chat(callback):
+def close_chat(callback):
+    '''
+    Закрытие чата по основному проходу товаров
+    '''
     STATE_DICT["list_products"] = None
     CATEGORIES_DICT["genre"] = None
-    DEL_MESSEGE_ID.append(callback.message.message_id)
     [bot.delete_message(callback.message.chat.id, id) for id in DEL_MESSEGE_ID]
     DEL_MESSEGE_ID.clear()
-    # bot.send_message(message.from_user.id, 'удалено')
 
 
-#@bot.message_handler(commands=["categories"])
-@bot.callback_query_handler(func=lambda callback: callback.data == 'categories')
-def get_product_categories(callback):
-    categories_novel = Product.query.filter_by(genre="Роман", is_published=True).all()
-    categories_adventures = Product.query.filter_by(genre="Приключения", is_published=True).all()
-    categories_fantasy = Product.query.filter_by(genre="Фэнтези", is_published=True).all()
-    categories_thriller = Product.query.filter_by(genre="Триллер", is_published=True).all()
-    categories_detective = Product.query.filter_by(genre="Детектив", is_published=True).all()
-    [bot.delete_message(callback.message.chat.id, id) for id in DEL_MESSEGE_ID]
-    DEL_MESSEGE_ID.clear()
-    DEL_MESSEGE_ID.append(callback.message.message_id)#, DEL_MESSEGE_ID.append(callback.message.message_id + 1)
-    print(2,DEL_MESSEGE_ID)
-    bot.send_message(
-        callback.message.chat.id,
-        f"<b>Категория</b>\n Роман {len(categories_novel)} шт \n Приключения {len(categories_adventures)} шт \n Фэнтези {len(categories_fantasy)} шт \n Триллер {len(categories_thriller)} шт \n Детектив {len(categories_detective)} шт \n",
-        parse_mode="HTML",
-        reply_markup=cat_keyboard,
-    )
-
-
-@bot.callback_query_handler(func=lambda callback: callback.data in ['adventures', 'novel', 'fantasy', 'thriller','detective'])
-def get_genre_adventures(callback):
-    CATEGORIES_DICT['genre'] = None
-    if callback.data == 'adventures':
-        CATEGORIES_DICT['genre'] = deque(Product.query.filter_by(genre="Приключения", is_published=True).all())
-    elif callback.data == 'novel':
-        CATEGORIES_DICT['genre'] = deque(Product.query.filter_by(genre="Роман", is_published=True).all())
-    elif callback.data == 'fantasy':
-        CATEGORIES_DICT['genre'] = deque(Product.query.filter_by(genre="Фэнтези", is_published=True).all())
-    elif callback.data == 'thriller':
-        CATEGORIES_DICT['genre'] = deque(Product.query.filter_by(genre="Триллер", is_published=True).all())
-    elif callback.data == 'detective':
-        CATEGORIES_DICT['genre'] = deque(Product.query.filter_by(genre="Детектив", is_published=True).all())
-    if len(CATEGORIES_DICT['genre']):
-        current_product = CATEGORIES_DICT['genre'][0]
-        check = FavoritesProducts.query.filter_by(user=callback.from_user.id,id_product=current_product.id).all()
-        if len(check) > 0:
-            reply_markup = piligrim_keyboard_2
-        elif len(check) == 0:
-            reply_markup = piligrim_keyboard_1
-        images = [i.image for i in current_product.image]
-        media = [
-            types.InputMediaPhoto(i)
-            for i in [
-                open(f"{os.path.dirname(__file__)}/static/image-product/{i}", "rb")
-                for i in images
-        ]
-    ]
-        bot.send_media_group(callback.message.chat.id, media)
-        bot.send_message(
-            callback.message.chat.id,
-            f"<b>НАЗВАНИЕ: {current_product.name}</b>,\n<i>{current_product.description}</i>,\n жанр: {current_product.genre},\n цена: <code>{current_product.price} ед.</code>",
-            parse_mode="HTML",
-            reply_markup=reply_markup,
-    )
-        [bot.delete_message(callback.message.chat.id, id) for id in DEL_MESSEGE_ID]
-        DEL_MESSEGE_ID.clear()
-        DEL_MESSEGE_ID.append(callback.message.message_id + 1), DEL_MESSEGE_ID.append(
-            callback.message.message_id + 2) 
-    else:
-        bot.send_message(callback.message.chat.id, 'Пустой раздел.')
-        DEL_MESSEGE_ID.append(callback.message.message_id + 1)
-
-
-@bot.callback_query_handler(func=lambda callback: callback.data == 'cat-back')
-def get_back_product_for_genry(callback):
-    list_products = CATEGORIES_DICT['genre']
-    list_products.rotate(-1)
-    current_product = list_products[0]
-    check = FavoritesProducts.query.filter_by(user=callback.from_user.id,id_product=current_product.id).all()
-    if len(check) > 0:
-        reply_markup = piligrim_keyboard_2
-    elif len(check) == 0:
-        reply_markup = piligrim_keyboard_1
-    images = [i.image for i in current_product.image]
-    media = [
-        types.InputMediaPhoto(i)
-        for i in [
-            open(f"{os.path.dirname(__file__)}/static/image-product/{i}", "rb")
-            for i in images
-        ]
-    ]
-    [bot.delete_message(callback.message.chat.id, id) for id in DEL_MESSEGE_ID]
-    DEL_MESSEGE_ID.clear()
-    DEL_MESSEGE_ID.append(callback.message.message_id + 1), DEL_MESSEGE_ID.append(
-        callback.message.message_id + 2
-    )
-    bot.send_media_group(callback.message.chat.id, media)
-    bot.send_message(
-        callback.message.chat.id,
-        f"<b>НАЗВАНИЕ: {current_product.name}</b>,\n<i>{current_product.description}</i>,\n жанр: {current_product.genre},\n цена: <code>{current_product.price} ед.</code>",
-        parse_mode="HTML",
-        reply_markup=reply_markup,
-    )
-
-
-@bot.callback_query_handler(func=lambda callback: callback.data == 'cat-next')
-def get_next_product_for_genry(callback):
-    list_products = CATEGORIES_DICT['genre']
-    list_products.rotate(1)
-    current_product = list_products[0]
-    check = FavoritesProducts.query.filter_by(user=callback.from_user.id,id_product=current_product.id).all()
-    if len(check) > 0:
-        reply_markup = piligrim_keyboard_2
-    elif len(check) == 0:
-        reply_markup = piligrim_keyboard_1
-    images = [i.image for i in current_product.image]
-    media = [
-        types.InputMediaPhoto(i)
-        for i in [
-            open(f"{os.path.dirname(__file__)}/static/image-product/{i}", "rb")
-            for i in images
-        ]
-    ]
-    [bot.delete_message(callback.message.chat.id, id) for id in DEL_MESSEGE_ID]
-    DEL_MESSEGE_ID.clear()
-    DEL_MESSEGE_ID.append(callback.message.message_id + 1), DEL_MESSEGE_ID.append(
-        callback.message.message_id + 2
-    )
-    bot.send_media_group(callback.message.chat.id, media)
-    bot.send_message(
-        callback.message.chat.id,
-        f"<b>НАЗВАНИЕ: {current_product.name}</b>,\n<i>{current_product.description}</i>,\n жанр: {current_product.genre},\n цена: <code>{current_product.price} ед.</code>",
-        parse_mode="HTML",
-        reply_markup=reply_markup,
-    )
-
-
-@bot.callback_query_handler(func=lambda callback: callback.data == 'cat-favorite')
-def set_favorite(callback):
+@bot.callback_query_handler(func=lambda callback: callback.data == 'close-start')
+def close_chat_start(callback):
     '''
-    Добавление товара в список избранного.
+    Закрытие стартового окна 
     '''
-    list_products = CATEGORIES_DICT["genre"]
-    current_product = list_products[0]
-    check = FavoritesProducts.query.filter_by(user=callback.from_user.id,id_product=current_product.id).all()
-    if len(check) > 0:
-        reply_markup = piligrim_keyboard_1
-    elif len(check) == 0:
-        reply_markup = piligrim_keyboard_2
-    images = [i.image for i in current_product.image]
-    media = [
-        types.InputMediaPhoto(i)
-        for i in [
-            open(f"{os.path.dirname(__file__)}/static/image-product/{i}", "rb")
-            for i in images
-        ]
-    ]
-    [bot.delete_message(callback.message.chat.id, id) for id in DEL_MESSEGE_ID]
-    DEL_MESSEGE_ID.clear()
-    DEL_MESSEGE_ID.append(callback.message.message_id + 1), DEL_MESSEGE_ID.append(
-        callback.message.message_id + 2
-    )
-    data_product = FavoritesProducts(user=callback.from_user.id,id_product=current_product.id, name=callback.from_user.first_name)
-    db.session.add(data_product)
-    db.session.commit()
-    bot.send_media_group(callback.message.chat.id, media)
-    bot.send_message(
-        callback.message.chat.id,
-        f"<b>НАЗВАНИЕ: {current_product.name}</b>,\n<i>{current_product.description}</i>,\n жанр: {current_product.genre},\n цена: <code>{current_product.price} ед.</code>",
-        parse_mode="HTML",
-        reply_markup=reply_markup,
-    )
+    bot.delete_message(callback.message.chat.id, callback.message.message_id)
 
 
-@bot.callback_query_handler(func=lambda callback: callback.data == 'cat-del-favorite')
-def del_favorite(callback):
-    '''
-    Удаление товара из списка избранного.
-    '''
-    list_products = CATEGORIES_DICT["genre"]
-    current_product = list_products[0]
-    check = FavoritesProducts.query.filter_by(user=callback.from_user.id,id_product=current_product.id).all()
-    if len(check) > 0:
-        reply_markup = piligrim_keyboard_1
-    elif len(check) == 0:
-        reply_markup = piligrim_keyboard_2
-    images = [i.image for i in current_product.image]
-    media = [
-        types.InputMediaPhoto(i)
-        for i in [
-            open(f"{os.path.dirname(__file__)}/static/image-product/{i}", "rb")
-            for i in images
-        ]
-    ]
-    data_product = FavoritesProducts.query.filter_by(user=callback.from_user.id,id_product=current_product.id, name=callback.from_user.first_name).first()
-    db.session.delete(data_product)
-    db.session.commit()
-    [bot.delete_message(callback.message.chat.id, id) for id in DEL_MESSEGE_ID]
-    DEL_MESSEGE_ID.clear()
-    DEL_MESSEGE_ID.append(callback.message.message_id + 1), DEL_MESSEGE_ID.append(
-        callback.message.message_id + 2
-    )
-    bot.send_media_group(callback.message.chat.id, media)
-    bot.send_message(
-        callback.message.chat.id,
-        f"<b>НАЗВАНИЕ: {current_product.name}</b>,\n<i>{current_product.description}</i>,\n жанр: {current_product.genre},\n цена: <code>{current_product.price} ед.</code>",
-        parse_mode="HTML",
-        reply_markup=reply_markup,
-    )
-
-# __________________________________________________________________________________________________________________
-
-
-#@bot.message_handler(commands=["product"])
 @bot.callback_query_handler(func=lambda callback: callback.data == 'product')
 def get_product(callback):
+    bot.delete_message(callback.message.chat.id, callback.message.message_id)
     list_products = deque(Product.query.filter_by(is_published=True).all())
     STATE_DICT.clear()
     STATE_DICT["list_products"] = list_products
@@ -314,9 +81,7 @@ def get_product(callback):
         markup_product = markup_product_1
     elif len(check) == 0:
         markup_product = markup_product_2
-    [bot.delete_message(callback.message.chat.id, id) for id in DEL_MESSEGE_ID]
-    DEL_MESSEGE_ID.clear()
-    images = [i.image for i in current_product.image]
+    images = [i.name for i in current_product.image]
     media = [
         types.InputMediaPhoto(i)
         for i in [
@@ -333,18 +98,24 @@ def get_product(callback):
     )
     DEL_MESSEGE_ID.append(callback.message.message_id + 1), DEL_MESSEGE_ID.append(
         callback.message.message_id + 2
-    ),DEL_MESSEGE_ID.append(callback.message.message_id)
+    )
 
 
 @bot.callback_query_handler(func=lambda callback: callback.data == 'next')
 def get_next_product(callback):
-    try:
+    print(1)
+    if STATE_DICT["list_products"]:
         list_products = STATE_DICT["list_products"]
-    except:
+        print(2.0)
+    else:
         list_products = deque(Product.query.filter_by(is_published=True).all())
+        print(2.1)
     list_products.rotate(1)
+    print(3)
     current_product = list_products[0]
-    images = [i.image for i in current_product.image]
+    print(4)
+    images = [i.name for i in current_product.image]
+    print(5)
     media = [
         types.InputMediaPhoto(i)
         for i in [
@@ -352,18 +123,25 @@ def get_next_product(callback):
             for i in images
         ]
     ]
+    print(6)
     check = FavoritesProducts.query.filter_by(user=callback.from_user.id,id_product=current_product.id).all()
+    print(7)
     if len(check) > 0:
         markup_product =  markup_product_1
+        print(8)
     elif len(check) == 0:
         markup_product = markup_product = markup_product_2
-    print(3,DEL_MESSEGE_ID)
+        print(9)
     [bot.delete_message(callback.message.chat.id, id) for id in DEL_MESSEGE_ID]
+    print(10)
     DEL_MESSEGE_ID.clear()
+    print(11)
     DEL_MESSEGE_ID.append(callback.message.message_id + 1), DEL_MESSEGE_ID.append(
         callback.message.message_id + 2
     )
+    print(12)
     bot.send_media_group(callback.message.chat.id, media)
+    print(13)
     bot.send_message(
         callback.message.chat.id,
         f"<b>НАЗВАНИЕ: {current_product.name}</b>,\n<i>{current_product.description}</i>,\n жанр: {current_product.genre},\n цена: <code>{current_product.price} ед.</code>",
@@ -381,7 +159,7 @@ def get_back_product(callback):
         list_products = deque(Product.query.filter_by(is_published=True).all())
     list_products.rotate(-1)
     current_product = list_products[0]
-    images = [i.image for i in current_product.image]
+    images = [i.name for i in current_product.image]
     media = [
         types.InputMediaPhoto(i)
         for i in [
@@ -431,7 +209,7 @@ def set_favorite(callback):
     except:
         list_products = deque(Product.query.filter_by(is_published=True).all())
     current_product = list_products[0]
-    images = [i.image for i in current_product.image]
+    images = [i.name for i in current_product.image]
     media = [
         types.InputMediaPhoto(i)
         for i in [
@@ -466,7 +244,7 @@ def del_favorite(callback):
     except:
         list_products = deque(Product.query.filter_by(is_published=True).all())
     current_product = list_products[0]
-    images = [i.image for i in current_product.image]
+    images = [i.name for i in current_product.image]
     media = [
         types.InputMediaPhoto(i)
         for i in [
@@ -491,6 +269,331 @@ def del_favorite(callback):
     )
 
 
+# _________________________________________________ХЕНДЛЕРЫ КАТЕГОРИЙ_________________________________________
+
+
+@bot.callback_query_handler(func=lambda callback: callback.data == 'close-categories')
+def close_chat_categories(callback):
+    bot.delete_message(callback.message.chat.id, callback.message.message_id)
+
+
+
+@bot.callback_query_handler(func=lambda callback: callback.data == 'categories')
+def get_product_categories(callback):
+    categories_novel = Product.query.filter_by(genre="Роман", is_published=True).all()
+    categories_adventures = Product.query.filter_by(genre="Приключения", is_published=True).all()
+    categories_fantasy = Product.query.filter_by(genre="Фэнтези", is_published=True).all()
+    categories_thriller = Product.query.filter_by(genre="Триллер", is_published=True).all()
+    categories_detective = Product.query.filter_by(genre="Детектив", is_published=True).all()
+    bot.delete_message(callback.message.chat.id, callback.message.message_id)
+    DEL_MESSEGE_ID.append(callback.message.message_id + 1)
+    bot.send_message(
+        callback.message.chat.id,
+        f"<b>Категория</b>\n Роман {len(categories_novel)} шт \n Приключения {len(categories_adventures)} шт \n Фэнтези {len(categories_fantasy)} шт \n Триллер {len(categories_thriller)} шт \n Детектив {len(categories_detective)} шт \n",
+        parse_mode="HTML",
+        reply_markup=cat_keyboard,
+    )
+
+
+@bot.callback_query_handler(func=lambda callback: callback.data in ['adventures', 'novel', 'fantasy', 'thriller','detective'])
+def get_selected_genre(callback):
+    CATEGORIES_DICT['genre'] = None
+    if callback.data == 'adventures':
+        CATEGORIES_DICT['genre'] = deque(Product.query.filter_by(genre="Приключения", is_published=True).all())
+    elif callback.data == 'novel':
+        CATEGORIES_DICT['genre'] = deque(Product.query.filter_by(genre="Роман", is_published=True).all())
+    elif callback.data == 'fantasy':
+        CATEGORIES_DICT['genre'] = deque(Product.query.filter_by(genre="Фэнтези", is_published=True).all())
+    elif callback.data == 'thriller':
+        CATEGORIES_DICT['genre'] = deque(Product.query.filter_by(genre="Триллер", is_published=True).all())
+    elif callback.data == 'detective':
+        CATEGORIES_DICT['genre'] = deque(Product.query.filter_by(genre="Детектив", is_published=True).all())
+    if len(CATEGORIES_DICT['genre']):
+        current_product = CATEGORIES_DICT['genre'][0]
+        check = FavoritesProducts.query.filter_by(user=callback.from_user.id,id_product=current_product.id).all()
+        if len(check) > 0:
+            reply_markup = piligrim_keyboard_2
+        elif len(check) == 0:
+            reply_markup = piligrim_keyboard_1
+        images = [i.name for i in current_product.image]
+        media = [
+            types.InputMediaPhoto(i)
+            for i in [
+                open(f"{os.path.dirname(__file__)}/static/image-product/{i}", "rb")
+                for i in images
+        ]
+    ]
+        bot.send_media_group(callback.message.chat.id, media)
+        bot.send_message(
+            callback.message.chat.id,
+            f"<b>НАЗВАНИЕ: {current_product.name}</b>,\n<i>{current_product.description}</i>,\n жанр: {current_product.genre},\n цена: <code>{current_product.price} ед.</code>",
+            parse_mode="HTML",
+            reply_markup=reply_markup,
+    )
+        [bot.delete_message(callback.message.chat.id, id) for id in DEL_MESSEGE_ID]
+        DEL_MESSEGE_ID.clear()
+        DEL_MESSEGE_ID.append(callback.message.message_id + 1), DEL_MESSEGE_ID.append(
+            callback.message.message_id + 2) 
+    else:
+        bot.send_message(callback.message.chat.id, 'Пустой раздел.')
+        DEL_MESSEGE_ID.append(callback.message.message_id + 1)
+
+
+@bot.callback_query_handler(func=lambda callback: callback.data == 'cat-back')
+def get_back_product_for_genry(callback):
+    list_products = CATEGORIES_DICT['genre']
+    list_products.rotate(-1)
+    current_product = list_products[0]
+    check = FavoritesProducts.query.filter_by(user=callback.from_user.id,id_product=current_product.id).all()
+    if len(check) > 0:
+        reply_markup = piligrim_keyboard_2
+    elif len(check) == 0:
+        reply_markup = piligrim_keyboard_1
+    images = [i.name for i in current_product.image]
+    media = [
+        types.InputMediaPhoto(i)
+        for i in [
+            open(f"{os.path.dirname(__file__)}/static/image-product/{i}", "rb")
+            for i in images
+        ]
+    ]
+    [bot.delete_message(callback.message.chat.id, id) for id in DEL_MESSEGE_ID]
+    DEL_MESSEGE_ID.clear()
+    DEL_MESSEGE_ID.append(callback.message.message_id + 1), DEL_MESSEGE_ID.append(
+        callback.message.message_id + 2
+    )
+    bot.send_media_group(callback.message.chat.id, media)
+    bot.send_message(
+        callback.message.chat.id,
+        f"<b>НАЗВАНИЕ: {current_product.name}</b>,\n<i>{current_product.description}</i>,\n жанр: {current_product.genre},\n цена: <code>{current_product.price} ед.</code>",
+        parse_mode="HTML",
+        reply_markup=reply_markup,
+    )
+
+
+@bot.callback_query_handler(func=lambda callback: callback.data == 'cat-next')
+def get_next_product_for_genry(callback):
+    list_products = CATEGORIES_DICT['genre']
+    list_products.rotate(1)
+    current_product = list_products[0]
+    check = FavoritesProducts.query.filter_by(user=callback.from_user.id,id_product=current_product.id).all()
+    if len(check) > 0:
+        reply_markup = piligrim_keyboard_2
+    elif len(check) == 0:
+        reply_markup = piligrim_keyboard_1
+    images = [i.name for i in current_product.image]
+    media = [
+        types.InputMediaPhoto(i)
+        for i in [
+            open(f"{os.path.dirname(__file__)}/static/image-product/{i}", "rb")
+            for i in images
+        ]
+    ]
+    [bot.delete_message(callback.message.chat.id, id) for id in DEL_MESSEGE_ID]
+    DEL_MESSEGE_ID.clear()
+    DEL_MESSEGE_ID.append(callback.message.message_id + 1), DEL_MESSEGE_ID.append(
+        callback.message.message_id + 2
+    )
+    bot.send_media_group(callback.message.chat.id, media)
+    bot.send_message(
+        callback.message.chat.id,
+        f"<b>НАЗВАНИЕ: {current_product.name}</b>,\n<i>{current_product.description}</i>,\n жанр: {current_product.genre},\n цена: <code>{current_product.price} ед.</code>",
+        parse_mode="HTML",
+        reply_markup=reply_markup,
+    )
+
+
+@bot.callback_query_handler(func=lambda callback: callback.data == 'cat-favorite')
+def set_favorite(callback):
+    '''
+    Добавление товара в список избранного.
+    '''
+    list_products = CATEGORIES_DICT["genre"]
+    current_product = list_products[0]
+    images = [i.name for i in current_product.image]
+    media = [
+        types.InputMediaPhoto(i)
+        for i in [
+            open(f"{os.path.dirname(__file__)}/static/image-product/{i}", "rb")
+            for i in images
+        ]
+    ]
+    [bot.delete_message(callback.message.chat.id, id) for id in DEL_MESSEGE_ID]
+    DEL_MESSEGE_ID.clear()
+    DEL_MESSEGE_ID.append(callback.message.message_id + 1), DEL_MESSEGE_ID.append(
+        callback.message.message_id + 2
+    )
+    data_product = FavoritesProducts(user=callback.from_user.id,id_product=current_product.id, name=callback.from_user.first_name)
+    db.session.add(data_product)
+    db.session.commit()
+    bot.send_media_group(callback.message.chat.id, media)
+    bot.send_message(
+        callback.message.chat.id,
+        f"<b>НАЗВАНИЕ: {current_product.name}</b>,\n<i>{current_product.description}</i>,\n жанр: {current_product.genre},\n цена: <code>{current_product.price} ед.</code>",
+        parse_mode="HTML",
+        reply_markup=piligrim_keyboard_1,
+    )
+
+
+@bot.callback_query_handler(func=lambda callback: callback.data == 'cat-del-favorite')
+def del_favorite(callback):
+    '''
+    Удаление товара из списка избранного.
+    '''
+    list_products = CATEGORIES_DICT["genre"]
+    current_product = list_products[0]
+    images = [i.name for i in current_product.image]
+    media = [
+        types.InputMediaPhoto(i)
+        for i in [
+            open(f"{os.path.dirname(__file__)}/static/image-product/{i}", "rb")
+            for i in images
+        ]
+    ]
+    data_product = FavoritesProducts.query.filter_by(user=callback.from_user.id,id_product=current_product.id, name=callback.from_user.first_name).first()
+    db.session.delete(data_product)
+    db.session.commit()
+    [bot.delete_message(callback.message.chat.id, id) for id in DEL_MESSEGE_ID]
+    DEL_MESSEGE_ID.clear()
+    DEL_MESSEGE_ID.append(callback.message.message_id + 1), DEL_MESSEGE_ID.append(
+        callback.message.message_id + 2
+    )
+    bot.send_media_group(callback.message.chat.id, media)
+    bot.send_message(
+        callback.message.chat.id,
+        f"<b>НАЗВАНИЕ: {current_product.name}</b>,\n<i>{current_product.description}</i>,\n жанр: {current_product.genre},\n цена: <code>{current_product.price} ед.</code>",
+        parse_mode="HTML",
+        reply_markup=piligrim_keyboard_2,
+    )
+
+
+# _______________________________________ХЕНДЛЕРЫ ИЗБРАННОГО_______________________________
+
+@bot.callback_query_handler(func=lambda callback: callback.data == 'get-favorites')
+def get_favorites(callback):
+    '''
+    Простмотр списка избранное.
+    '''
+    bot.delete_message(callback.message.chat.id, callback.message.message_id)
+    list_favorites = deque(FavoritesProducts.query.filter_by(user=callback.from_user.id).all())
+    if not list_favorites:
+        bot.send_message(callback.message.chat.id, 'У вас нет избранных товаров!')
+        time.sleep(3)
+        bot.delete_message(callback.message.chat.id, callback.message.message_id + 1)
+    STATE_DICT["list_favorites"] = list_favorites
+    current_favorites = list_favorites[0].product
+    images = [i.name for i in current_favorites.image]
+    media = [
+        types.InputMediaPhoto(i)
+        for i in [
+            open(f"{os.path.dirname(__file__)}/static/image-product/{i}", "rb")
+            for i in images
+        ]
+    ]
+    bot.send_media_group(callback.message.chat.id, media)
+    bot.send_message(
+        callback.message.chat.id,
+        f"<b>НАЗВАНИЕ: {current_favorites.name}</b>,\n<i>{current_favorites.description}</i>,\n жанр: {current_favorites.genre},\n цена: <code>{current_favorites.price} ед.</code>",
+        parse_mode="HTML",
+        reply_markup=favorites_keyboard
+    )
+    DEL_MESSEGE_ID.append(callback.message.message_id + 1), DEL_MESSEGE_ID.append(
+        callback.message.message_id + 2
+    )
+
+
+@bot.callback_query_handler(func=lambda callback: callback.data == 'fav-next')
+def get_next_favorites(callback):
+    [bot.delete_message(callback.message.chat.id, id) for id in DEL_MESSEGE_ID]
+    DEL_MESSEGE_ID.clear()
+    list_favorites = STATE_DICT["list_favorites"]
+    list_favorites.rotate(1)
+    print(1)
+    current_favorites = list_favorites[0].product
+    print(2)
+    images = [i.name for i in current_favorites.image]
+    media = [
+        types.InputMediaPhoto(i)
+        for i in [
+            open(f"{os.path.dirname(__file__)}/static/image-product/{i}", "rb")
+            for i in images
+        ]
+    ]
+    bot.send_media_group(callback.message.chat.id, media)
+    bot.send_message(
+        callback.message.chat.id,
+        f"<b>НАЗВАНИЕ: {current_favorites.name}</b>,\n<i>{current_favorites.description}</i>,\n жанр: {current_favorites.genre},\n цена: <code>{current_favorites.price} ед.</code>",
+        parse_mode="HTML",
+        reply_markup=favorites_keyboard
+    )
+    DEL_MESSEGE_ID.append(callback.message.message_id + 1), DEL_MESSEGE_ID.append(
+        callback.message.message_id + 2
+    )
+
+
+@bot.callback_query_handler(func=lambda callback: callback.data == 'fav-back')
+def get_next_favorites(callback):
+    [bot.delete_message(callback.message.chat.id, id) for id in DEL_MESSEGE_ID]
+    DEL_MESSEGE_ID.clear()
+    list_favorites = STATE_DICT["list_favorites"]
+    list_favorites.rotate(-1)
+    current_favorites = list_favorites[0].product
+    images = [i.name for i in current_favorites.image]
+    media = [
+        types.InputMediaPhoto(i)
+        for i in [
+            open(f"{os.path.dirname(__file__)}/static/image-product/{i}", "rb")
+            for i in images
+        ]
+    ]
+    bot.send_media_group(callback.message.chat.id, media)
+    bot.send_message(
+        callback.message.chat.id,
+        f"<b>НАЗВАНИЕ: {current_favorites.name}</b>,\n<i>{current_favorites.description}</i>,\n жанр: {current_favorites.genre},\n цена: <code>{current_favorites.price} ед.</code>",
+        parse_mode="HTML",
+        reply_markup=favorites_keyboard
+    )
+    DEL_MESSEGE_ID.append(callback.message.message_id + 1), DEL_MESSEGE_ID.append(
+        callback.message.message_id + 2
+    )
+
+
+@bot.callback_query_handler(func=lambda callback: callback.data == 'fav-del')
+def get_next_favorites(callback):
+    [bot.delete_message(callback.message.chat.id, id) for id in DEL_MESSEGE_ID]
+    DEL_MESSEGE_ID.clear()
+    list_favorites = STATE_DICT["list_favorites"]
+    current_favorites = list_favorites[0].product
+    data_product = FavoritesProducts.query.filter_by(user=callback.from_user.id,id_product=current_favorites.id, name=callback.from_user.first_name).first()
+    db.session.delete(data_product)
+    db.session.commit()
+    list_favorites.rotate(1)
+    current_favorites = list_favorites[0].product
+    if not current_favorites:
+        bot.send_message(callback.message.chat.id, 'У вас нет избранных товаров!')
+        time.sleep(3)
+        bot.delete_message(callback.message.chat.id, callback.message.message_id + 1)
+    images = [i.name for i in current_favorites.image]
+    media = [
+        types.InputMediaPhoto(i)
+        for i in [
+            open(f"{os.path.dirname(__file__)}/static/image-product/{i}", "rb")
+            for i in images
+        ]
+    ]
+    bot.send_media_group(callback.message.chat.id, media)
+    bot.send_message(
+        callback.message.chat.id,
+        f"<b>НАЗВАНИЕ: {current_favorites.name}</b>,\n<i>{current_favorites.description}</i>,\n жанр: {current_favorites.genre},\n цена: <code>{current_favorites.price} ед.</code>",
+        parse_mode="HTML",
+        reply_markup=favorites_keyboard
+    )
+    DEL_MESSEGE_ID.append(callback.message.message_id + 1), DEL_MESSEGE_ID.append(
+        callback.message.message_id + 2
+    )
+
+
+
 @login_manager.user_loader
 def load_user(user):
     return AdminProfile.query.get(user)
@@ -512,13 +615,6 @@ def receive_update():
         return ""
     else:
         abort(403)
-
-
-# @app.route('/', methods=['POST'])
-# def get_test():
-#     data = request.get_json()
-#     print (data)
-#     return ("ok")
 
 
 @app.route("/login", methods=["POST", "GET"])

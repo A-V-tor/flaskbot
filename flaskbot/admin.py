@@ -74,15 +74,15 @@ class ImageView(ModelView):
     column_display_pk = True
     can_view_details = True
     column_hide_backrefs = False
-    column_editable_list = ["image"]
-    column_list = ["id", "image", "product_id", "product.name"]
-    column_default_sort = "image"
+    column_editable_list = ["name"]
+    column_list = ["id", "name", "product_id", "product.name"]
+    column_default_sort = "name"
     column_descriptions = dict(image="хранятся в /image-product/")
     column_labels = dict(image="изображение", product_id="идентификатор товара")
     create_modal = True
     edit_modal = True
     path = os.path.join(os.path.dirname(__file__), "static/image-product")
-    form_extra_fields = {"image": form.ImageUploadField("изображение", base_path=path)}
+    form_extra_fields = {"name": form.ImageUploadField("изображение", base_path=path)}
 
     def is_accessible(self):
         try:
