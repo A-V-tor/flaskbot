@@ -416,6 +416,25 @@ use_chardet_on_py3 = ["chardet (>=3.0.2,<6)"]
 socks = ["PySocks (>=1.5.6,!=1.5.7)"]
 
 [[package]]
+name = "rethinkdb"
+version = "2.4.9"
+description = "Python driver library for the RethinkDB database server."
+category = "main"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+
+[package.dependencies]
+six = "*"
+
+[[package]]
+name = "six"
+version = "1.16.0"
+description = "Python 2 and 3 compatibility utilities"
+category = "main"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*"
+
+[[package]]
 name = "speaklater"
 version = "1.3"
 description = "implements a lazy string for python useful for use with gettext"
@@ -519,7 +538,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "4de4d13ea5dac1d84149a3e7364d722cd80fc4b318f6b6c3a40d9df33e02fd2e"
+content-hash = "bf764f921b1c1cc45015c15099a32af03537dd35d33a1385f874e5392283a3cc"
 
 [metadata.files]
 aiogram = [
@@ -1025,6 +1044,14 @@ pytz = [
 requests = [
     {file = "requests-2.28.1-py3-none-any.whl", hash = "sha256:8fefa2a1a1365bf5520aac41836fbee479da67864514bdb821f31ce07ce65349"},
     {file = "requests-2.28.1.tar.gz", hash = "sha256:7c5599b102feddaa661c826c56ab4fee28bfd17f5abca1ebbe3e7f19d7c97983"},
+]
+rethinkdb = [
+    {file = "rethinkdb-2.4.9-py2.py3-none-any.whl", hash = "sha256:dd2455b3eab5266d8006eeefeb5eb970a3697dfe6aa18e1ab6e1d99233badfcb"},
+    {file = "rethinkdb-2.4.9.tar.gz", hash = "sha256:755f08f717535a55c05128f6be6c28248fa9aff2678a7816aab87e1f9f5815c1"},
+]
+six = [
+    {file = "six-1.16.0-py2.py3-none-any.whl", hash = "sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254"},
+    {file = "six-1.16.0.tar.gz", hash = "sha256:1e61c37477a1626458e36f7b1d82aa5c9b094fa4802892072e49de9c60c4c926"},
 ]
 speaklater = [
     {file = "speaklater-1.3.tar.gz", hash = "sha256:59fea336d0eed38c1f0bf3181ee1222d0ef45f3a9dd34ebe65e6bfffdd6a65a9"},

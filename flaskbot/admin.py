@@ -3,13 +3,12 @@ import os.path
 from flask_admin import Admin, AdminIndexView, BaseView, expose, form
 from flask_admin.contrib.fileadmin import FileAdmin
 from flask_admin.contrib.sqla import ModelView
-# from wtforms.fields import SelectField, BooleanField
 from wtforms import TextAreaField
 
 from flaskbot import app, db
 
 from .bot import current_user
-from .other import AdminProfile, Image, Product, FavoritesProducts
+from .other import AdminProfile, Product, FavoritesProducts
 
 
 class MyAdminIndexView(AdminIndexView):
@@ -70,31 +69,12 @@ class AdminProfileView(ModelView):
             pass
 
 
-class ImageView(ModelView):
-    column_display_pk = True
-    can_view_details = True
-    column_hide_backrefs = False
-    column_editable_list = ["name"]
-    column_list = ["id", "name", "product_id", "product.name"]
-    column_default_sort = "name"
-    column_descriptions = dict(image="хранятся в /image-product/")
-    column_labels = dict(image="изображение", product_id="идентификатор товара")
-    create_modal = True
-    edit_modal = True
-    path = os.path.join(os.path.dirname(__file__), "static/image-product")
-    form_extra_fields = {"name": form.ImageUploadField("изображение", base_path=path)}
-
-    def is_accessible(self):
-        try:
-            if current_user.admin:
-                return True
-        except:
-            pass
-
 
 class ProductView(ModelView):
     column_display_pk = True
     can_view_details = True
+    path = os.path.join(os.path.dirname(__file__), "static/image-product")
+    form_extra_fields = {"image": form.ImageUploadField("изображение", base_path=path)}
     column_list = [
         "id",
         "date",
@@ -179,15 +159,7 @@ admin.add_view(
         menu_icon_value="glyphicon-shopping-cart",
     )
 )
-admin.add_view(
-    ImageView(
-        Image,
-        db.session,
-        name="Фото",
-        menu_icon_type="glyph",
-        menu_icon_value="glyphicon-picture",
-    )
-)
+
 admin.add_view(
     AdminProfileView(
         AdminProfile,
@@ -197,4 +169,4 @@ admin.add_view(
         menu_icon_value="glyphicon-user",
     )
 )
-admin.add_view(ModelView(FavoritesProducts, db.session, name='Избранное'))
+admin.add_view(ModelView(FavoritesProducts, db.session, name="Избранное"))
