@@ -1,6 +1,8 @@
+import datetime
 import os
 import time
 from collections import deque
+
 import telebot
 from dotenv import find_dotenv, load_dotenv
 from flask import abort, flash, redirect, render_template, request, session, url_for
@@ -13,28 +15,28 @@ from flask_login import (
 )
 from telebot import types
 
-from flaskbot import app, babel, db
+from flaskbot import app, babel, db, server
 
 from .other import (
     AdminProfile,
-    Product,
+    CurrentDayUsers,
     FavoritesProducts,
+    Product,
+    cat_keyboard,
+    favorites_keyboard,
     markup_product_1,
     markup_product_2,
-    cat_keyboard,
     piligrim_keyboard,
     piligrim_keyboard_1,
     piligrim_keyboard_2,
-    welcome_keyboard,
-    favorites_keyboard,
+    search_keyboard,
     search_keyboard_1,
     search_keyboard_2,
-    search_keyboard,
+    welcome_keyboard,
 )
 
-
 load_dotenv(find_dotenv())
-login_manager = LoginManager(app)
+login_manager = LoginManager(server)
 bot = telebot.TeleBot(os.getenv("token"))
 
 
@@ -57,6 +59,36 @@ SEARCH_DICT = {}
 
 @bot.message_handler(commands=["start"])
 def start_chat(message):
+    user = message.from_user.id
+    is_premium = message.from_user.is_premium
+    is_bot = message.from_user.is_bot
+    language_code = message.from_user.language_code
+    print(user, is_premium, is_bot, language_code)
+    print(type(is_premium))
+    check = CurrentDayUsers.query.filter_by(user=user).first()
+    print(5)
+    if is_premium == None:
+        is_premium = False
+    else:
+        is_premium = True
+    if check and check.date.strftime("%Y-%m-%d") < datetime.datetime.now().strftime(
+        "%Y-%m-%d"
+    ):
+        print(1123)
+        data_for_entries = CurrentDayUsers(
+            user=user, is_premium=is_premium, is_bot=is_bot, language_code=language_code
+        )
+        print(1, data_for_entries)
+        db.session.add(data_for_entries)
+    elif not check:
+        data_for_entries = CurrentDayUsers(
+            user=user, is_premium=is_premium, is_bot=is_bot, language_code=language_code
+        )
+        print(2, data_for_entries)
+        db.session.add(data_for_entries)
+    print(1)
+    db.session.commit()
+    print(1)
     bot.delete_message(message.chat.id, message.message_id)
     bot.send_message(
         message.from_user.id,
@@ -87,6 +119,12 @@ def close_chat_start(callback):
     Закрытие стартового окна
     """
     bot.delete_message(callback.message.chat.id, callback.message.message_id)
+
+
+@bot.message_handler(commands=["a"])
+def help_chat(message):
+    bot.delete_message(message.chat.id, message.message_id)
+    bot.send_message(message.from_user.id, message.from_user)
 
 
 # __________________________________________ХЕНДЛЕРЫ ПОИСКА_____________________________________________________________
@@ -318,7 +356,6 @@ def get_product(callback):
         item_id_photo = bot.send_photo(
             callback.message.chat.id,
             photo=photo,
-            caption=f"{callback.message.message_id}",
         )
     item_id_text = bot.send_message(
         callback.message.chat.id,
@@ -523,10 +560,13 @@ def get_product_categories(callback):
     categories_detective = Product.query.filter_by(
         genre="Детектив", is_published=True
     ).all()
+    categories_philosophy = Product.query.filter_by(
+        genre="Философия", is_published=True
+    ).all()
     bot.delete_message(callback.message.chat.id, callback.message.message_id)
     item_id_text = bot.send_message(
         callback.message.chat.id,
-        f"<b>Категория</b>\n Роман {len(categories_novel)} шт \n Приключения {len(categories_adventures)} шт \n Фэнтези {len(categories_fantasy)} шт \n Триллер {len(categories_thriller)} шт \n Детектив {len(categories_detective)} шт \n",
+        f"<b>Категория</b>\n Роман {len(categories_novel)} шт \n Приключения {len(categories_adventures)} шт \n Фэнтези {len(categories_fantasy)} шт \n Триллер {len(categories_thriller)} шт \n Детектив {len(categories_detective)} шт \n Философия {len(categories_philosophy)}",
         parse_mode="HTML",
         reply_markup=cat_keyboard,
     )
@@ -536,7 +576,7 @@ def get_product_categories(callback):
 
 @bot.callback_query_handler(
     func=lambda callback: callback.data
-    in ["adventures", "novel", "fantasy", "thriller", "detective"]
+    in ["adventures", "novel", "fantasy", "thriller", "detective", "philosophy"]
 )
 def get_selected_genre(callback):
     CATEGORIES_DICT[callback.from_user.id] = None
@@ -568,6 +608,12 @@ def get_selected_genre(callback):
         CATEGORIES_DICT[callback.from_user.id] = {
             "genre": deque(
                 Product.query.filter_by(genre="Детектив", is_published=True).all()
+            )
+        }
+    elif callback.data == "philosophy":
+        CATEGORIES_DICT[callback.from_user.id] = {
+            "genre": deque(
+                Product.query.filter_by(genre="Философия", is_published=True).all()
             )
         }
     if len(CATEGORIES_DICT[callback.from_user.id]["genre"]):
@@ -909,18 +955,23 @@ def get_locale():
     return session.get("lang", "ru")
 
 
-@app.route("/", methods=["GET", "POST"])
+@server.route("/hello-world")
+def hello():
+    return "Hello World!"
+
+
+@server.route("/", methods=["GET", "POST"])
 def receive_update():
     if request.headers.get("content-type") == "application/json":
         json_string = request.get_data().decode("utf-8")
         update = telebot.types.Update.de_json(json_string)
         bot.process_new_updates([update])
-        return ""
+        return "123"
     else:
         abort(403)
 
 
-@app.route("/login", methods=["POST", "GET"])
+@server.route("/login", methods=["POST", "GET"])
 def index_autorization():
     """Авторизация администратора"""
 
@@ -930,6 +981,7 @@ def index_autorization():
         ).first()
         if datauser:
             login_user(datauser, remember=True)
+            session["admin"] = True
             return redirect(url_for("admin.index"))
         else:
             flash("Неверный логин или пароль!")
@@ -937,14 +989,15 @@ def index_autorization():
     return render_template("autorization.html", title="Авторизация")
 
 
-@app.route("/exit", methods=["POST", "GET"])
+@server.route("/exit", methods=["POST", "GET"])
 @login_required
 def user_exit():
     logout_user()
+    session["admin"] = False
     return redirect(url_for("index_autorization"))
 
 
 bot.remove_webhook()
 time.sleep(0.1)
 
-bot.set_webhook(url="")
+bot.set_webhook(url="https://5d98-79-133-105-38.eu.ngrok.io")

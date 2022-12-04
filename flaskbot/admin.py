@@ -1,3 +1,4 @@
+import os
 import os.path
 
 from flask_admin import Admin, AdminIndexView, BaseView, expose, form
@@ -5,10 +6,16 @@ from flask_admin.contrib.fileadmin import FileAdmin
 from flask_admin.contrib.sqla import ModelView
 from wtforms import TextAreaField
 
-from flaskbot import app, db
+from flaskbot import app, db, server
 
 from .bot import current_user
-from .other import AdminProfile, Product, FavoritesProducts
+from .other import (
+    AdminProfile,
+    CurrentDayUsers,
+    DashProfile,
+    FavoritesProducts,
+    Product,
+)
 
 
 class MyAdminIndexView(AdminIndexView):
@@ -21,7 +28,7 @@ class MyAdminIndexView(AdminIndexView):
 
 
 admin = Admin(
-    app,
+    server,
     name="",
     template_mode="bootstrap3",
     index_view=MyAdminIndexView(
@@ -69,12 +76,9 @@ class AdminProfileView(ModelView):
             pass
 
 
-
 class ProductView(ModelView):
     column_display_pk = True
     can_view_details = True
-    path = os.path.join(os.path.dirname(__file__), "static/image-product")
-    form_extra_fields = {"image": form.ImageUploadField("изображение", base_path=path)}
     column_list = [
         "id",
         "date",
@@ -114,16 +118,52 @@ class ProductView(ModelView):
             ("Роман", "Роман"),
             ("Триллер", "Триллер"),
             ("Детектив", "Детектив"),
+            ("Философия", "Философия"),
         ]
     }
     form_overrides = {"description": TextAreaField}
     form_widget_args = {"description": {"rows": 5, "style": "font-family: monospace;"}}
     create_modal = True
     edit_modal = True
+    path = os.path.abspath(os.getcwd() + "/flaskbot/static/image-product")
+    form_extra_fields = {"image": form.ImageUploadField("изображение", base_path=path)}
 
     def is_accessible(self):
         try:
             if current_user.admin:
+                return True
+        except:
+            pass
+
+
+class CurrentDayUsersView(ModelView):
+    column_list = ["date", "user", "is_premium", "is_bot", "language_code"]
+    column_labels = dict(
+        date="дата",
+        user="пользователь",
+        is_premium="Премиум ?",
+        is_bot="Бот ?",
+        language_code="языковая зона",
+    )
+
+    def is_accessible(self):
+        try:
+            if current_user.admin:
+                return True
+        except:
+            pass
+
+
+class DashProfileWiev(ModelView):
+    column_list = [
+        "name",
+        "psw",
+    ]
+    column_labels = dict(name="логин", psw="пароль")
+
+    def is_accessible(self):
+        try:
+            if current_user.owner:
                 return True
         except:
             pass
@@ -169,4 +209,32 @@ admin.add_view(
         menu_icon_value="glyphicon-user",
     )
 )
-admin.add_view(ModelView(FavoritesProducts, db.session, name="Избранное"))
+
+admin.add_view(
+    DashProfileWiev(
+        DashProfile,
+        db.session,
+        name=" Юзер - аналитики",
+        menu_icon_type="glyph",
+        menu_icon_value="glyphicon-eye-open",
+    )
+)
+admin.add_view(
+    ModelView(
+        FavoritesProducts,
+        db.session,
+        name="Избранное",
+        menu_icon_type="glyph",
+        menu_icon_value="glyphicon-bookmark",
+    )
+)
+
+admin.add_view(
+    CurrentDayUsersView(
+        CurrentDayUsers,
+        db.session,
+        name="1 день",
+        menu_icon_type="glyph",
+        menu_icon_value="glyphicon-pencil",
+    )
+)

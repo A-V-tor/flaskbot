@@ -1,9 +1,9 @@
 import datetime
 
-from telebot import types
 from flask_login import UserMixin
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship
+from telebot import types
 
 from flaskbot import db
 
@@ -37,6 +37,13 @@ class AdminProfile(db.Model, UserMixin):
         return self.name
 
 
+class DashProfile(db.Model):
+    __tablename__ = "dashprofile"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100))
+    psw = db.Column(db.String(300))
+
+
 class FavoritesProducts(db.Model):
     __tablename__ = "favoritesproducts"
     id = db.Column(db.Integer, primary_key=True)
@@ -48,7 +55,21 @@ class FavoritesProducts(db.Model):
         return self.name
 
 
-# db.create_all()
+class CurrentDayUsers(db.Model):
+    """
+    Модель юзеров текущего дня.
+    """
+
+    __tablename__ = "current_day_product"
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.DateTime(), default=datetime.datetime.now)
+    user = db.Column(db.String(100))
+    is_premium = db.Column(db.Boolean, nullable=False, default=None)
+    is_bot = db.Column(db.Boolean, nullable=False, default=False)
+    language_code = db.Column(db.String(10), default="ru")
+
+
+db.create_all()
 
 # admin_user = AdminProfile(name='admin', psw='admin', owner=True)
 # db.session.add(admin_user)
@@ -103,6 +124,9 @@ category_adventures = types.InlineKeyboardButton(
 category_fantasy = types.InlineKeyboardButton(text="фентези", callback_data="fantasy")
 category_novel = types.InlineKeyboardButton(text="роман", callback_data="novel")
 category_thriller = types.InlineKeyboardButton(text="триллер", callback_data="thriller")
+category_philosophy = types.InlineKeyboardButton(
+    text="философия", callback_data="philosophy"
+)
 category_detective = types.InlineKeyboardButton(
     text="детектив", callback_data="detective"
 )
@@ -113,6 +137,7 @@ cat_keyboard.add(
     category_fantasy,
     category_novel,
     category_thriller,
+    category_philosophy,
 ).add(close_button_categories)
 
 # клавиатура для прохода по категории товара
