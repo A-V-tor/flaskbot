@@ -155,11 +155,22 @@ class CurrentDayUsersView(ModelView):
 
 
 class DashProfileWiev(ModelView):
+    column_display_pk = True
     column_list = [
         "name",
         "psw",
     ]
     column_labels = dict(name="логин", psw="пароль")
+
+    def is_accessible(self):
+        try:
+            if current_user.owner:
+                return True
+        except:
+            pass
+
+class FavoritesProductsWiev(ModelView):
+    column_display_pk = True
 
     def is_accessible(self):
         try:
@@ -220,7 +231,7 @@ admin.add_view(
     )
 )
 admin.add_view(
-    ModelView(
+    FavoritesProductsWiev(
         FavoritesProducts,
         db.session,
         name="Избранное",
@@ -233,8 +244,8 @@ admin.add_view(
     CurrentDayUsersView(
         CurrentDayUsers,
         db.session,
-        name="1 день",
+        name="Посетители",
         menu_icon_type="glyph",
-        menu_icon_value="glyphicon-pencil",
+        menu_icon_value="glyphicon-retweet",
     )
 )

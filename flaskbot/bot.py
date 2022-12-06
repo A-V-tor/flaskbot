@@ -63,10 +63,7 @@ def start_chat(message):
     is_premium = message.from_user.is_premium
     is_bot = message.from_user.is_bot
     language_code = message.from_user.language_code
-    print(user, is_premium, is_bot, language_code)
-    print(type(is_premium))
-    check = CurrentDayUsers.query.filter_by(user=user).first()
-    print(5)
+    check = CurrentDayUsers.query.filter_by(user=user).order_by(CurrentDayUsers.date.desc()).first()
     if is_premium == None:
         is_premium = False
     else:
@@ -74,21 +71,16 @@ def start_chat(message):
     if check and check.date.strftime("%Y-%m-%d") < datetime.datetime.now().strftime(
         "%Y-%m-%d"
     ):
-        print(1123)
         data_for_entries = CurrentDayUsers(
             user=user, is_premium=is_premium, is_bot=is_bot, language_code=language_code
         )
-        print(1, data_for_entries)
         db.session.add(data_for_entries)
     elif not check:
         data_for_entries = CurrentDayUsers(
             user=user, is_premium=is_premium, is_bot=is_bot, language_code=language_code
         )
-        print(2, data_for_entries)
         db.session.add(data_for_entries)
-    print(1)
     db.session.commit()
-    print(1)
     bot.delete_message(message.chat.id, message.message_id)
     bot.send_message(
         message.from_user.id,
@@ -1000,4 +992,4 @@ def user_exit():
 bot.remove_webhook()
 time.sleep(0.1)
 
-bot.set_webhook(url="https://5d98-79-133-105-38.eu.ngrok.io")
+bot.set_webhook(url="")
