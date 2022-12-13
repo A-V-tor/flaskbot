@@ -16,7 +16,6 @@ Flask-BabelEx = "^0.9.4"
 Flask-Login = "^0.6.2"
 dash = "^2.7.0"
 pandas = "^1.5.2"
-dash-auth = "^1.4.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

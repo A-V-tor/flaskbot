@@ -37,7 +37,14 @@ from .other import (
 
 load_dotenv(find_dotenv())
 login_manager = LoginManager(server)
+login_manager.init_app(server)
+login_manager.login_view = "/login"
 bot = telebot.TeleBot(os.getenv("token"))
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return AdminProfile.query.get(int(user_id))
 
 
 ###########################################################################
@@ -63,7 +70,11 @@ def start_chat(message):
     is_premium = message.from_user.is_premium
     is_bot = message.from_user.is_bot
     language_code = message.from_user.language_code
-    check = CurrentDayUsers.query.filter_by(user=user).order_by(CurrentDayUsers.date.desc()).first()
+    check = (
+        CurrentDayUsers.query.filter_by(user=user)
+        .order_by(CurrentDayUsers.date.desc())
+        .first()
+    )
     if is_premium == None:
         is_premium = False
     else:
@@ -947,10 +958,6 @@ def get_locale():
     return session.get("lang", "ru")
 
 
-@server.route("/hello-world")
-def hello():
-    return "Hello World!"
-
 
 @server.route("/", methods=["GET", "POST"])
 def receive_update():
@@ -958,7 +965,7 @@ def receive_update():
         json_string = request.get_data().decode("utf-8")
         update = telebot.types.Update.de_json(json_string)
         bot.process_new_updates([update])
-        return "123"
+        return "OK"
     else:
         abort(403)
 
@@ -973,7 +980,6 @@ def index_autorization():
         ).first()
         if datauser:
             login_user(datauser, remember=True)
-            session["admin"] = True
             return redirect(url_for("admin.index"))
         else:
             flash("Неверный логин или пароль!")
@@ -985,7 +991,6 @@ def index_autorization():
 @login_required
 def user_exit():
     logout_user()
-    session["admin"] = False
     return redirect(url_for("index_autorization"))
 
 

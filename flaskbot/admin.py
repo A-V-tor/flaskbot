@@ -1,6 +1,8 @@
 import os
 import os.path
 
+from flask import url_for
+from markupsafe import Markup
 from flask_admin import Admin, AdminIndexView, BaseView, expose, form
 from flask_admin.contrib.fileadmin import FileAdmin
 from flask_admin.contrib.sqla import ModelView
@@ -16,6 +18,11 @@ from .other import (
     FavoritesProducts,
     Product,
 )
+
+
+def get_name_image(model, file_data):
+    name = f"{model}/{model.name}"
+    return name
 
 
 class MyAdminIndexView(AdminIndexView):
@@ -125,8 +132,26 @@ class ProductView(ModelView):
     form_widget_args = {"description": {"rows": 5, "style": "font-family: monospace;"}}
     create_modal = True
     edit_modal = True
-    path = os.path.abspath(os.getcwd() + "/flaskbot/static/image-product")
-    form_extra_fields = {"image": form.ImageUploadField("изображение", base_path=path)}
+    path = os.path.join(os.path.dirname(__file__), "static/image-product/")
+    form_extra_fields = {
+        "image": form.ImageUploadField(
+            "изображение", base_path=path, url_relative_path="/image-product/",
+            #max_size=(531, 470, True),
+            #thumbnail_size=(100, 100, True)
+            namegen=get_name_image
+        )
+    }
+
+    def list_thumbnail(viev, context, model, name):
+        if not model.image:
+            return ""
+        url = url_for(
+            "static", filename=os.path.join("image-product/", model.image)
+        )
+        if model.image.split(".")[-1] in ["jpg", "jpeg", "png"]:
+            return Markup('<img src="%s" width="100">' % url)
+
+    column_formatters = {"image": list_thumbnail}
 
     def is_accessible(self):
         try:
@@ -154,21 +179,6 @@ class CurrentDayUsersView(ModelView):
             pass
 
 
-class DashProfileWiev(ModelView):
-    column_display_pk = True
-    column_list = [
-        "name",
-        "psw",
-    ]
-    column_labels = dict(name="логин", psw="пароль")
-
-    def is_accessible(self):
-        try:
-            if current_user.owner:
-                return True
-        except:
-            pass
-
 class FavoritesProductsWiev(ModelView):
     column_display_pk = True
 
@@ -190,7 +200,7 @@ admin.add_view(
 )
 
 
-path = os.path.join(os.path.dirname(__file__), "static")
+path = os.path.join(os.path.dirname(__file__), "static/")
 admin.add_view(
     FileAdmin(
         path,
@@ -221,15 +231,6 @@ admin.add_view(
     )
 )
 
-admin.add_view(
-    DashProfileWiev(
-        DashProfile,
-        db.session,
-        name=" Юзер - аналитики",
-        menu_icon_type="glyph",
-        menu_icon_value="glyphicon-eye-open",
-    )
-)
 admin.add_view(
     FavoritesProductsWiev(
         FavoritesProducts,
