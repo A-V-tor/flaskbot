@@ -5,10 +5,12 @@
 <img src="https://github.com/A-V-tor/flaskbot/blob/main/flaskbot/visits.png">
 </br>
 <h3>файл .env</h3>
-`token=токен от BotFather`
-`secret_key=ключ для шифрования`
+<code>token=токен от BotFather
+</br>
+secret_key=ключ для шифрования
+</code>
 </br>
 <h3>Установить вебхук</h3>
-**
-curl --location --request POST 'https://api.telegram.org/bot<TOKEN>/setWebhook' --header 'Content-Type: application/json' --data-raw '{"url": "https://<URL>"}'
-**
+
+<code>curl --location --request POST 'https://api.telegram.org/bot<TOKEN>/setWebhook' --header 'Content-Type: application/json' --data-raw '{"url": "https://<URL>"}'</code>
+
