@@ -1,11 +1,23 @@
 {% extends 'admin/master.html' %}
 
 {% block body %}
-<a href="/admin/dash/genre/"> График категорий</a>
-<br><br>
-<a href="/dash/current-day/"> Посещений за день</a>
-<br><br>
-<a href="/admin/dash/favorites/"> Популярное</a>
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='file.css') }}">
 
+<div class="analytic">
+    <h4> График категорий</h4><a href="/admin/dash/genre/"><img src="/static/category.jpg"  alt=""></a>
+</div>
+
+<div class="analytic" id="re-1">
+    <h4>Посещаемость</h4><a href="/dash/current-day/"> <img src="/static/visits.jpg"  alt=""></a>
+</div>
+
+<div class="analytic">
+    <h4>Популярное</h4><a href="/admin/dash/favorites/"> <img src="/static/favorits.jpg"  alt=""></a>
+</div>
+
+<div class="analytic">
+    <h4>test1</h4><a href=""> <img src="/static/test1.jpg"  alt=""></a>
+</div>
 
 {% endblock %}

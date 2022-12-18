@@ -19,7 +19,7 @@ class Product(db.Model):
     price = db.Column(db.Integer)
     image = db.Column(db.String(100), nullable=False)
     is_published = db.Column(db.Boolean)
-    favorites = relationship("FavoritesProducts", backref="product", lazy="joined")
+    favorites = relationship("FavoritesProducts", backref="product", lazy=True)
 
     def __str__(self):
         return self.name
@@ -30,6 +30,7 @@ class AdminProfile(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100))
     psw = db.Column(db.String(300))
+    tg_id = db.Column(db.String(100), nullable=True)
     admin = db.Column(db.Boolean, nullable=False, default=True)
     owner = db.Column(db.Boolean, nullable=False, default=False)
 
@@ -55,18 +56,26 @@ class FavoritesProducts(db.Model):
         return self.name
 
 
-class CurrentDayUsers(db.Model):
+class CurrentUsers(db.Model):
     """
     Модель юзеров текущего дня.
     """
 
-    __tablename__ = "current_day_product"
+    __tablename__ = "current_users"
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.DateTime(), default=datetime.datetime.now)
     user = db.Column(db.String(100))
     is_premium = db.Column(db.Boolean, nullable=False, default=None)
     is_bot = db.Column(db.Boolean, nullable=False, default=False)
     language_code = db.Column(db.String(10), default="ru")
+
+
+class InfoMessage(db.Model):
+    __tablename__ = "info_message"
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.DateTime(), default=datetime.datetime.now)
+    text = db.Column(db.String(700))
+    is_published = db.Column(db.Boolean, default=False)
 
 
 db.create_all()
@@ -185,3 +194,7 @@ search_keyboard_2.add(search_back, search_next).add(search_favorite, search_pay)
     close_button
 )
 search_keyboard.add(search_back, search_next)
+
+
+def arbeit_func():
+    pass

@@ -2,10 +2,10 @@ import os
 import os.path
 
 from flask import url_for
-from markupsafe import Markup
 from flask_admin import Admin, AdminIndexView, BaseView, expose, form
 from flask_admin.contrib.fileadmin import FileAdmin
 from flask_admin.contrib.sqla import ModelView
+from markupsafe import Markup
 from wtforms import TextAreaField
 
 from flaskbot import app, db, server
@@ -13,9 +13,10 @@ from flaskbot import app, db, server
 from .bot import current_user
 from .other import (
     AdminProfile,
-    CurrentDayUsers,
+    CurrentUsers,
     DashProfile,
     FavoritesProducts,
+    InfoMessage,
     Product,
 )
 
@@ -73,6 +74,7 @@ class AdminProfileView(ModelView):
         psw="Пароль",
         admin="Права админа",
         owner="Права владельца",
+        tg_id="телеграмм id",
     )
 
     def is_accessible(self):
@@ -135,19 +137,19 @@ class ProductView(ModelView):
     path = os.path.join(os.path.dirname(__file__), "static/image-product/")
     form_extra_fields = {
         "image": form.ImageUploadField(
-            "изображение", base_path=path, url_relative_path="/image-product/",
-            #max_size=(531, 470, True),
-            #thumbnail_size=(100, 100, True)
-            namegen=get_name_image
+            "изображение",
+            base_path=path,
+            url_relative_path="/image-product/",
+            # max_size=(531, 470, True),
+            # thumbnail_size=(100, 100, True)
+            namegen=get_name_image,
         )
     }
 
     def list_thumbnail(viev, context, model, name):
         if not model.image:
             return ""
-        url = url_for(
-            "static", filename=os.path.join("image-product/", model.image)
-        )
+        url = url_for("static", filename=os.path.join("image-product/", model.image))
         if model.image.split(".")[-1] in ["jpg", "jpeg", "png"]:
             return Markup('<img src="%s" width="100">' % url)
 
@@ -161,7 +163,7 @@ class ProductView(ModelView):
             pass
 
 
-class CurrentDayUsersView(ModelView):
+class CurrentUsersView(ModelView):
     column_list = ["date", "user", "is_premium", "is_bot", "language_code"]
     column_labels = dict(
         date="дата",
@@ -181,6 +183,29 @@ class CurrentDayUsersView(ModelView):
 
 class FavoritesProductsWiev(ModelView):
     column_display_pk = True
+    column_labels = dict(
+        user="id юзера",
+        name="логин",
+        product="🧡 товар ",
+    )
+
+    def is_accessible(self):
+        try:
+            if current_user.owner:
+                return True
+        except:
+            pass
+
+
+class InfoMessageWiev(ModelView):
+    column_display_pk = True
+    column_list = ["text", "is_published"]
+    column_editable_list = ["is_published"]
+    column_labels = dict(date="Дата", text="Текст", is_published="Опубликовано ?")
+    form_overrides = {"text": TextAreaField}
+    form_widget_args = {"text": {"rows": 5, "style": "font-family: monospace;"}}
+    create_modal = True
+    edit_modal = True
 
     def is_accessible(self):
         try:
@@ -242,11 +267,21 @@ admin.add_view(
 )
 
 admin.add_view(
-    CurrentDayUsersView(
-        CurrentDayUsers,
+    CurrentUsersView(
+        CurrentUsers,
         db.session,
         name="Посетители",
         menu_icon_type="glyph",
         menu_icon_value="glyphicon-retweet",
+    )
+)
+
+admin.add_view(
+    InfoMessageWiev(
+        InfoMessage,
+        db.session,
+        name="Инфо-рассылка",
+        menu_icon_type="glyph",
+        menu_icon_value="glyphicon-comment",
     )
 )

@@ -1,11 +1,10 @@
 import os
 
+from dash import Dash
 from dotenv import find_dotenv, load_dotenv
 from flask import Flask
-from dash import Dash
 from flask_babelex import Babel
 from flask_sqlalchemy import SQLAlchemy
-
 
 load_dotenv(find_dotenv())
 
@@ -47,6 +46,6 @@ server.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(
 
 
 db = SQLAlchemy(server)
-from .analytics import *
 from .admin import *
+from .analytics import *
 from .bot import *

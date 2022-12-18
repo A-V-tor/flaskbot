@@ -1,17 +1,16 @@
 from collections import Counter
+
 import numpy as np
 import pandas as pd
 import plotly.express as px
 from dash import dcc, html
 from dash.dependencies import Input, Output
-from sqlalchemy import text
-from flaskbot import app, db, app2, app3, server
-from sqlalchemy import func
-from .other import Product, FavoritesProducts
 from flask_login import current_user
+from sqlalchemy import func, text
 
+from flaskbot import app, app2, app3, db, server
 
-
+from .other import FavoritesProducts, Product
 
 
 def get_analytics_for_genre(server):
@@ -48,14 +47,20 @@ def get_analytics_for_genre(server):
         ],
         [Input(component_id="submit-button-state", component_property="n_clicks")],
     )
-
     def get_user_name(n_clicks):
+        check = hasattr(current_user, "admin")
+        if not check:
+            welcome_msg = ""
+            user_data = None
+            link_style = {"display": "/login"}
+            return welcome_msg, user_data, link_style
         if current_user.admin:
             welcome_msg = "Авторизованы как, " + current_user.name
             user_data = get_analytics_for_genre()
             link_style = {"display": "none"}
             return welcome_msg, user_data, link_style
         return "Your Princess is in another castle", ""
+
     def get_analytics_for_genre():
         count_genre = Product.query.filter_by(is_published=True).all()
         data = Counter([i.genre for i in count_genre])
@@ -80,10 +85,13 @@ def get_analytics_for_genre(server):
             children=[
                 html.Div(id="body-div"),
                 html.H1(
-                    children="Книги", style={"textAlign": "center", "color": colors["text"]}
+                    children="Книги",
+                    style={"textAlign": "center", "color": colors["text"]},
                 ),
                 html.A(
-                    children="назад", href="/admin/analytics/", style={"fontSize": "20px"}
+                    children="назад",
+                    href="/admin/analytics/",
+                    style={"fontSize": "20px"},
                 ),
                 html.Div(
                     children="""
@@ -103,9 +111,6 @@ def get_analytics_for_genre(server):
         )
 
     return app.server
-
-
-
 
 
 def get_visit_statistics(server):
@@ -142,29 +147,33 @@ def get_visit_statistics(server):
         ],
         [Input(component_id="submit-button-state", component_property="n_clicks")],
     )
-
     def get_user_name(n_clicks):
+        check = hasattr(current_user, "admin")
+        if not check:
+            welcome_msg = ""
+            user_data = None
+            link_style = {"display": "/login"}
+            return welcome_msg, user_data, link_style
         if current_user.admin:
             welcome_msg = "Авторизованы как, " + current_user.name
             user_data = get_visit_statistics()
             link_style = {"display": "none"}
             return welcome_msg, user_data, link_style
-        return "Your Princess is in another castle", ""
 
     def get_visit_statistics():
-        '''
+        """
         Статистика посещения по различным группам.
 
-        '''
-        
+        """
+
         sql_data_for_visits = text(
-            'SELECT strftime("%Y-%m-%d",date) FROM  current_day_product GROUP BY date'
+            'SELECT strftime("%Y-%m-%d",date) FROM  current_users GROUP BY date'
         )
         sql_data_for_visits_premium = text(
-            'SELECT strftime("%Y-%m-%d",date) FROM  current_day_product WHERE is_premium=True GROUP BY date'
+            'SELECT strftime("%Y-%m-%d",date) FROM  current_users WHERE is_premium=True GROUP BY date'
         )
         sql_data_for_visits_bot = text(
-            'SELECT strftime("%Y-%m-%d",date) FROM  current_day_product WHERE is_bot=True GROUP BY date'
+            'SELECT strftime("%Y-%m-%d",date) FROM  current_users WHERE is_bot=True GROUP BY date'
         )
         amount_visits_users_premium = Counter(
             [i[0] for i in db.engine.execute(sql_data_for_visits_premium)]
@@ -175,7 +184,6 @@ def get_visit_statistics(server):
         amount_visits_bot = Counter(
             [i[0] for i in db.engine.execute(sql_data_for_visits_bot)]
         )
-        
 
         return html.Div(
             [
@@ -184,7 +192,9 @@ def get_visit_statistics(server):
                     "Динамика посещений",
                 ),
                 html.A(
-                    children="назад", href="/admin/analytics/", style={"fontSize": "20px"}
+                    children="назад",
+                    href="/admin/analytics/",
+                    style={"fontSize": "20px"},
                 ),
                 dcc.Graph(
                     id="graph",
@@ -215,10 +225,9 @@ def get_visit_statistics(server):
                 dcc.Interval(id="graph-update", interval=1 * 1000, n_intervals=0),
             ]
         )
-        
+
     return app2.server
-        
-    
+
 
 def get_favorite(server):
     app3.layout = html.Div(
@@ -253,11 +262,16 @@ def get_favorite(server):
         ],
         [Input(component_id="submit-button-state", component_property="n_clicks")],
     )
-
     def get_user_name(n_clicks):
+        check = hasattr(current_user, "admin")
+        if not check:
+            welcome_msg = ""
+            user_data = None
+            link_style = {"display": "/login"}
+            return welcome_msg, user_data, link_style
         if current_user.admin:
             welcome_msg = "Авторизованы как, " + current_user.name
-            user_data =get_favorite()
+            user_data = get_favorite()
             link_style = {"display": "none"}
             return welcome_msg, user_data, link_style
         return "Your Princess is in another castle", ""
@@ -289,14 +303,15 @@ def get_favorite(server):
                 html.Div(id="body-div"),
                 html.H2("Популярность товара"),
                 html.A(
-                    children="назад", href="/admin/analytics/", style={"fontSize": "20px"}
+                    children="назад",
+                    href="/admin/analytics/",
+                    style={"fontSize": "20px"},
                 ),
                 dcc.Graph(id="graph", figure=fig),
             ]
         )
 
     return app3.server
-
 
 
 get_analytics_for_genre(server)
